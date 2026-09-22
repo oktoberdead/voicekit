@@ -10,6 +10,7 @@
    <Button Content="PANIC · заглушить всё" Background="#FF9B9B" Click="PanicClick"/>
    <Button Content="Остановить звуки" Click="StopSoundsClick"/>
    <Button Content="Сохранить" Click="SaveClick"/>
+   <Button Content="Лаборатория голоса β" Click="OpenCalibration" ToolTip="Запись чистого образца, анализ и A/B. Основной аудиодвижок будет остановлен."/>
   </WrapPanel><TextBlock x:Name="Status" Text="Аудиодвижок остановлен" Foreground="{StaticResource Accent}"/>
   <TextBlock x:Name="MeterLabel" FontFamily="Consolas" Text="IN —   OUT —"/></StackPanel>
   <TabControl Grid.Row="2" Background="#111820" BorderBrush="#344352">

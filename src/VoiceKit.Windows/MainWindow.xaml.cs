@@ -223,6 +223,7 @@ public partial class MainWindow : Window
     private void ToggleEngine(object sender, RoutedEventArgs e) => ToggleEngine();
     private void ToggleEngine()
     {
+        if (_calibrationWindow is not null) { Status.Text = "Закрой лабораторию перед запуском основного аудио."; return; }
         if (_engine is not null) { StopEngine("Аудиодвижок остановлен."); return; }
         if (!_ready || _assetsBusy) { Status.Text = "Дождись загрузки аудиофайлов."; return; }
         AudioEngine? candidate = null;
@@ -262,6 +263,7 @@ public partial class MainWindow : Window
     private void PanicClick(object sender, RoutedEventArgs e) => Panic();
     private void Panic()
     {
+        _calibrationWindow?.EmergencyStop("PANIC: запись и прослушивание лаборатории остановлены.");
         _engine?.Graph.SetPanic(true);
         Status.Text = "PANIC: весь выход заглушен. Для сброса останови и заново запусти аудио.";
     }
@@ -272,7 +274,12 @@ public partial class MainWindow : Window
         {
             // Silence immediately; disposal belongs on UI and may run only after resume.
             _engine?.Graph.SetPanic(true);
-            Dispatcher.BeginInvoke(() => StopEngine("Сон Windows: аудио остановлено. После пробуждения запусти заново."));
+            _calibrationWindow?.SilenceImmediately();
+            Dispatcher.BeginInvoke(() =>
+            {
+                _calibrationWindow?.EmergencyStop("Сон Windows: лаборатория остановлена. Запиши новый дубль после пробуждения.");
+                StopEngine("Сон Windows: аудио остановлено. После пробуждения запусти заново.");
+            });
         }
     }
     private void UpdateDiagnostics()
@@ -510,6 +517,11 @@ public partial class MainWindow : Window
     private async void HandleBinding(HotkeyBinding binding, bool pressed)
     {
         if (_exit || !_ready) return;
+        if (_calibrationWindow is not null)
+        {
+            if (pressed && binding.Command == VoiceCommand.Panic) Panic();
+            return; // Never restart the live route via a hotkey while the lab owns capture/headphones.
+        }
         try
         {
             if (binding.Command == VoiceCommand.PlaySound && binding.Target is { } sound) { SendSound(sound, pressed); return; }
@@ -549,6 +561,7 @@ public partial class MainWindow : Window
         if (_shuttingDown) return;
         _shuttingDown = true;
         _exit = true;
+        _calibrationWindow?.Close();
         _saveTimer.Stop(); _diagnostics.Stop();
         SystemEvents.PowerModeChanged -= PowerChanged;
         _hotkeys?.Dispose(); _tray?.Dispose();
