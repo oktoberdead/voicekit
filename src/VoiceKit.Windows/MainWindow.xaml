@@ -69,6 +69,23 @@
      <TextBlock Foreground="#9EAFBE" Text="Формат: Ctrl+Alt+F1, Shift+F13, NumPad1. Занятые нами нажатия подавляются, но эксклюзивность в играх и повышенных процессах не гарантируется. Дубликаты внутри VoiceKit запрещены. Мышь пока не поддержана."/>
     </StackPanel></GroupBox>
    </StackPanel></ScrollViewer></TabItem>
+   <TabItem Header="Телефон"><ScrollViewer VerticalScrollBarVisibility="Auto" Foreground="#E3ECF4"><StackPanel Margin="20">
+    <TextBlock Text="Веб-пульт" FontSize="24"/>
+    <TextBlock Text="Питч, робот, эхо и реверберация — в браузере телефона. Звук остаётся на ПК, в сеть уходят только команды и настройки." Foreground="#9EAFBE"/>
+    <GroupBox Header="Подключение по локальной сети"><StackPanel>
+     <TextBlock Text="Порт (изменяется при остановленном пульте)"/><TextBox x:Name="RemotePortBox" Text="8765" MaxLength="5" Width="130" HorizontalAlignment="Left"/>
+     <Button x:Name="RemoteToggleButton" Content="Включить веб-пульт" Click="ToggleRemote" HorizontalAlignment="Left"/>
+     <TextBlock x:Name="RemoteStatusLabel" Text="Веб-пульт выключен. Сетевой порт не открыт." Foreground="{StaticResource Accent}"/>
+     <TextBlock Text="1. Подключи телефон к той же сети Wi-Fi, что и ПК. Открой один из адресов:"/>
+     <ComboBox x:Name="RemoteAddressBox"/>
+     <WrapPanel><Button x:Name="RemoteCopyButton" Content="Скопировать адрес" Click="CopyRemoteAddress" IsEnabled="False"/><Button x:Name="RemoteOpenButton" Content="Открыть в браузере ПК" Click="OpenRemoteAddress" IsEnabled="False"/></WrapPanel>
+     <TextBlock Text="2. Введи на телефоне этот код сопряжения:"/>
+     <TextBlock x:Name="RemoteCodeLabel" Text="— — — — — — — —" FontFamily="Consolas" FontSize="32" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+     <TextBlock Text="Код и сессии меняются после выключения и включения пульта. Это также отключит все ранее подключённые телефоны." Foreground="#9EAFBE"/>
+    </StackPanel></GroupBox>
+    <TextBlock Text="Если Windows спросит о брандмауэре — разреши VoiceKit только для частных сетей. Если адресов несколько (VPN, Ethernet, Wi-Fi), выбери адрес той сети, к которой подключён телефон. Аудиодвижок запускается на ПК отдельно."/>
+    <TextBlock Text="Только для доверенной домашней сети: соединение HTTP, без шифрования. Не открывай порт на роутере и не используй пульт в публичном Wi-Fi. Запуск от администратора не нужен. Веб-пульт не включается автоматически при запуске приложения." Foreground="#FFD38A"/>
+   </StackPanel></ScrollViewer></TabItem>
    <TabItem Header="Диагностика"><ScrollViewer VerticalScrollBarVisibility="Auto" Foreground="#E3ECF4"><StackPanel Margin="20">
     <TextBlock Text="Состояние тракта" FontSize="22"/><TextBlock x:Name="DiagnosticsLabel" FontFamily="Consolas" Text="Запусти аудио для просмотра показателей."/>
     <TextBlock Text="Что проверять" FontSize="20"/><TextBlock Foreground="#9EAFBE" Text="• Очереди должны колебаться около цели, а не расти минутами.&#10;• Underrun / resync не должны постоянно увеличиваться. При треске увеличь буфер.&#10;• Время DSP должно быть заметно меньше длительности блока.&#10;• Задержка очередей не включает драйвер, VB-CABLE, алгоритм питча и Discord.&#10;• После потери устройства или сна передача останавливается. Переподключи устройство и запусти аудио заново. Автовыхода на колонки нет.&#10;• PANIC фиксируется до остановки и нового запуска: старые хвосты и буферы не восстанавливаются."/>

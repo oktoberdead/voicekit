@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101413" />
+    <meta name="color-scheme" content="dark" />
+    <title>VoiceKit — пульт управления</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div id="demo-banner" class="demo-banner" hidden>
+      Демонстрация интерфейса · аудиодвижок не подключён
+    </div>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="VoiceKit, главная"
+          ><img src="/icon.svg" alt="" width="34" height="34" /><span
+            >voicekit<span class="brand-dot">.</span></span
+          ><span class="brand-tag">REMOTE</span></a
+        >
+        <div class="connection">
+          <span id="connection-dot" class="connection-dot"></span
+          ><span id="connection-label" role="status">Не подключено</span
+          ><button id="session-button" class="text-button">
+            Подключить <span aria-hidden="true">↗</span>
+          </button>
+        </div>
+      </header>
+      <main>
+        <div class="page-heading">
+          <div>
+            <div class="eyebrow">
+              <span class="small-square"></span> ТВОЙ ПЕРСОНАЛЬНЫЙ ПУЛЬТ
+            </div>
+            <h1>Обработка голоса<span>.</span></h1>
+            <p class="intro">Другой голос. Всё тот же ты.</p>
+          </div>
+          <div class="signal-note">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M8 6v6a4 4 0 0 0 8 0V6a4 4 0 0 0-8 0Z M5 11v1a7 7 0 0 0 14 0v-1 M12 19v3 M8 22h8"
+              />
+            </svg>
+            <div>
+              <strong>Звук остаётся на ПК</strong
+              ><span>Здесь — только управление</span>
+            </div>
+          </div>
+        </div>
+        <div
+          id="engine-notice"
+          class="engine-notice"
+          role="status"
+          hidden
+        ></div>
+        <div class="section-heading">
+          <h2>Цепочка эффектов <span>01 — 04</span></h2>
+          <span id="active-count" class="active-count">— активных</span>
+        </div>
+        <section
+          id="effects"
+          class="effects"
+          aria-label="Эффекты голоса"
+        ></section>
+        <div class="how-to">
+          <span class="hint-icon" aria-hidden="true">i</span>
+          <p>
+            <strong>Верх — включить эффект.</strong> Низ — настроить под
+            себя.<br class="mobile-break" />
+            Можно комбинировать несколько.
+          </p>
+          <span id="sync-label" class="sync-label" aria-live="polite"
+            >Ожидание подключения</span
+          >
+        </div>
+        <footer>
+          <span><span class="footer-dot"></span> ЛОКАЛЬНО. БЕЗ ОБЛАКА.</span
+          ><span>VOICEKIT / CONTROL ROOM</span>
+        </footer>
+      </main>
+    </div>
+    <dialog id="pair-dialog" aria-labelledby="pair-title">
+      <form id="pair-form">
+        <div class="dialog-heading">
+          <img src="/icon.svg" alt="" width="40" height="40" /><button
+            type="button"
+            id="pair-close"
+            class="close-button"
+            aria-label="Закрыть окно подключения"
+          >
+            ×
+          </button>
+        </div>
+        <div class="eyebrow">ОДНА СЕТЬ. ПОЛНЫЙ КОНТРОЛЬ.</div>
+        <h2 id="pair-title">Привет, это твой пульт.</h2>
+        <p>
+          Открой вкладку <strong>«Телефон»</strong> в VoiceKit на ПК и введи код
+          сопряжения.
+        </p>
+        <label for="pair-code">Код с экрана компьютера</label>
+        <input
+          id="pair-code"
+          name="code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="[0-9 ]{8,9}"
+          maxlength="9"
+          placeholder="0000 0000"
+          required
+          autofocus
+        />
+        <p id="pair-error" class="pair-error" role="alert"></p>
+        <button id="pair-submit" class="pair-submit" type="submit">
+          Подключить пульт <span aria-hidden="true">↗</span>
+        </button>
+        <p class="privacy-note">
+          Только для доверенной локальной сети.<br />Соединение HTTP, без
+          шифрования.
+        </p>
+      </form>
+    </dialog>
+    <noscript
+      >Для пульта нужен JavaScript. Аудио при этом обрабатывается только на
+      компьютере.</noscript
+    >
+  </body>
+</html>

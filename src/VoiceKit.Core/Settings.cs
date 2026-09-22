@@ -93,6 +93,7 @@ public sealed record AppSettings
     public string? OutputId { get; init; }
     public string? MonitorId { get; init; }
     public int BufferMs { get; init; } = 30;
+    public int RemotePort { get; init; } = 8765;
     public AudioSettings Audio { get; init; } = new();
     public string? CarrierFile { get; init; }
     public List<SoundEntry> Library { get; init; } = [];

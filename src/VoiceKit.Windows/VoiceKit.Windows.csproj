@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../VoiceKit.Core/VoiceKit.Core.csproj" />
+    <ProjectReference Include="../VoiceKit.Remote/VoiceKit.Remote.csproj" />
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 </Project>

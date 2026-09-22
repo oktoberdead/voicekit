@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/VoiceKit.Core/VoiceKit.Core.csproj" />
+    <Project Path="src/VoiceKit.Remote/VoiceKit.Remote.csproj" />
     <Project Path="src/VoiceKit.Windows/VoiceKit.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">

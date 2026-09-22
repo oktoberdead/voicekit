@@ -1,0 +1,13 @@
+{
+  "name": "voicekit-web-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "preview:web": "node tools/preview-web.mjs",
+    "test:web": "node --test tests/web/*.test.mjs",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

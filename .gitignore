@@ -6,3 +6,7 @@ TestResults/
 *.user
 *.suo
 artifacts/
+
+node_modules/
+playwright-report/
+test-results/

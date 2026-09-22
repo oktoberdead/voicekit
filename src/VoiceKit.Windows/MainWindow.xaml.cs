@@ -52,6 +52,7 @@ public partial class MainWindow : Window
         try
         {
             _settings = _store.Load(out var warning);
+            RemotePortBox.Text = Math.Clamp(_settings.RemotePort, 1024, 65535).ToString();
             BufferBox.ItemsSource = new[] { 10, 15, 20, 30, 50, 80, 100 };
             BufferBox.SelectedItem = _settings.BufferMs;
             if (BufferBox.SelectedIndex < 0) BufferBox.SelectedItem = 30;
@@ -521,9 +522,13 @@ public partial class MainWindow : Window
     }
     private void ExitClick(object sender, RoutedEventArgs e) => Exit();
     private void Exit() { _exit = true; Close(); }
-    private void WindowClosing(object? sender, CancelEventArgs e)
+    private async void WindowClosing(object? sender, CancelEventArgs e)
     {
+        if (_shutdownComplete) return;
         if (!_exit && _tray?.Available == true) { e.Cancel = true; Hide(); return; }
+        e.Cancel = true;
+        if (_shuttingDown) return;
+        _shuttingDown = true;
         _exit = true;
         _saveTimer.Stop(); _diagnostics.Stop();
         SystemEvents.PowerModeChanged -= PowerChanged;
@@ -532,6 +537,14 @@ public partial class MainWindow : Window
         // Preserve changes even on explicit exit. Do not show modal errors during shutdown.
         try { if (_ready) { ReadRouting(); _store.Save(_settings); } }
         catch (Exception ex) { Debug.WriteLine(ex); }
+        try { await StopRemoteAsync(); }
+        catch (Exception ex) { Debug.WriteLine(ex); }
+        finally
+        {
+            _shutdownComplete = true;
+            // Even with no active server, leave the current Closing event before calling Close again.
+            Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.Normal);
+        }
     }
     private void OpenSettingsFolder(object sender, RoutedEventArgs e)
     {
