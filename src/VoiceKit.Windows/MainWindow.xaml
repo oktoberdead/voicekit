@@ -1,0 +1,80 @@
+<Window x:Class="VoiceKit.Windows.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="VoiceKit · локальная обработка голоса" Width="1060" Height="860" MinWidth="800" MinHeight="620"
+ Loaded="WindowLoaded" Closing="WindowClosing" SourceInitialized="WindowSourceInitialized">
+ <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <DockPanel><StackPanel><TextBlock Text="VOICEKIT" FontSize="30" FontWeight="Bold" Foreground="{StaticResource Accent}"/><TextBlock Text="Голос под твоим управлением. Локально. Без нейросетей." Foreground="#9EAFBE"/></StackPanel>
+   <WrapPanel HorizontalAlignment="Right" VerticalAlignment="Center"><Button Content="В трей" Click="HideToTray"/><Button Content="Выход" Click="ExitClick"/></WrapPanel>
+  </DockPanel>
+  <StackPanel Grid.Row="1" Margin="0,14,0,18"><WrapPanel>
+   <Button x:Name="StartButton" Content="Запустить аудио" Click="ToggleEngine"/>
+   <Button Content="PANIC · заглушить всё" Background="#FF9B9B" Click="PanicClick"/>
+   <Button Content="Остановить звуки" Click="StopSoundsClick"/>
+   <Button Content="Сохранить" Click="SaveClick"/>
+  </WrapPanel><TextBlock x:Name="Status" Text="Аудиодвижок остановлен" Foreground="{StaticResource Accent}"/>
+  <TextBlock x:Name="MeterLabel" FontFamily="Consolas" Text="IN —   OUT —"/></StackPanel>
+  <TabControl Grid.Row="2" Background="#111820" BorderBrush="#344352">
+   <TabItem Header="Маршруты"><ScrollViewer VerticalScrollBarVisibility="Auto" Foreground="#E3ECF4"><StackPanel Margin="20">
+    <GroupBox Header="Аудиоустройства · изменения применяются после перезапуска аудио"><StackPanel>
+     <TextBlock Text="Микрофон (физический вход)"/><ComboBox x:Name="CaptureDeviceBox"/>
+     <TextBlock Text="Передача в приложения → CABLE Input"/><ComboBox x:Name="OutputDeviceBox"/>
+     <TextBlock Text="Прослушивание → USB-наушники"/><ComboBox x:Name="MonitorDeviceBox"/>
+     <TextBlock Text="Буфер / целевое заполнение очередей, мс (это НЕ полная задержка)"/><ComboBox x:Name="BufferBox"/>
+     <Button Content="Обновить список устройств" HorizontalAlignment="Left" Click="RefreshDevicesClick"/>
+     <TextBlock Foreground="#9EAFBE" Text="В Discord/игре выбери микрофон CABLE Output. Отключи Windows «Прослушивать с данного устройства» и лишний мониторинг в OBS. Прослушивание через колонки может вызвать обратную связь."/>
+    </StackPanel></GroupBox>
+    <GroupBox Header="Микшер передачи"><StackPanel><CheckBox x:Name="MicMuted" Content="Заглушить микрофон и его эффекты"/>
+<DockPanel><TextBlock Text="Усиление микрофона"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=MicGain, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="MicGain" Minimum="0" Maximum="4"/><DockPanel><TextBlock Text="Громкость саундпада"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=SoundGain, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="SoundGain" Minimum="0" Maximum="2"/><DockPanel><TextBlock Text="Общий уровень передачи"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=OutputGain, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="OutputGain" Minimum="0" Maximum="2"/></StackPanel></GroupBox>
+    <GroupBox Header="Независимый микшер прослушивания"><StackPanel>
+     <CheckBox x:Name="MonitorVoice" Content="Слушать обработанный голос"/><CheckBox x:Name="MonitorSounds" Content="Слушать саундпад"/>
+     <CheckBox x:Name="MonitorDry" Content="Слушать чистый микрофон (отладка)"/>
+<DockPanel><TextBlock Text="Уровень в наушниках"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=MonitorGain, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="MonitorGain" Minimum="0" Maximum="2"/><TextBlock x:Name="MonitorWarning" Foreground="#FFD38A" Text="Чистый + обработанный голос одновременно могут давать двоение. По умолчанию чистый монитор выключен."/>
+    </StackPanel></GroupBox>
+   </StackPanel></ScrollViewer></TabItem>
+   <TabItem Header="Эффекты"><ScrollViewer VerticalScrollBarVisibility="Auto" Foreground="#E3ECF4"><StackPanel Margin="20"><CheckBox x:Name="EffectsEnabled" Content="Обработка включена (общий bypass)"/><GroupBox Header="01 / Питч"><StackPanel><CheckBox x:Name="PitchEnabled" Content="Изменять высоту голоса"/><DockPanel><TextBlock Text="Полутоны"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=Pitch, Path=Value, StringFormat=F1}"/></DockPanel><Slider x:Name="Pitch" Minimum="-12" Maximum="12"/><TextBlock Foreground="#9EAFBE" Text="Без сохранения формант. STFT phase vocoder, окно 1024 сэмпла: на больших сдвигах возможны фазовые артефакты."/></StackPanel></GroupBox><GroupBox Header="02 / Робот"><StackPanel><CheckBox x:Name="RobotEnabled" Content="Кольцевая модуляция"/><DockPanel><TextBlock Text="Частота, Гц"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=RobotHz, Path=Value, StringFormat=F0}"/></DockPanel><Slider x:Name="RobotHz" Minimum="10" Maximum="300"/><DockPanel><TextBlock Text="Доля эффекта"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=RobotMix, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="RobotMix" Minimum="0" Maximum="1"/></StackPanel></GroupBox><GroupBox Header="03 / Вокодер · 20 полос"><StackPanel>
+ <CheckBox x:Name="VocoderEnabled" Content="Вокодер включён"/>
+ <TextBlock Text="Источник несущей"/><ComboBox x:Name="CarrierKindBox" SelectionChanged="CarrierKindChanged"><ComboBoxItem Content="Синтезатор"/><ComboBoxItem Content="Аудиофайл"/></ComboBox>
+<DockPanel><TextBlock Text="Основной тон, Гц"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=CarrierHz, Path=Value, StringFormat=F0}"/></DockPanel><Slider x:Name="CarrierHz" Minimum="45" Maximum="440"/><CheckBox x:Name="CarrierChord" Content="Мажорный аккорд (вместо одного тона)"/>
+ <WrapPanel><Button x:Name="CarrierSelectButton" Content="Выбрать MP3 / WAV…" Click="ChooseCarrier"/><Button Content="Убрать файл" Click="ClearCarrier"/></WrapPanel>
+ <TextBlock x:Name="CarrierLabel" Foreground="#9EAFBE" Text="Файл не выбран"/>
+ <CheckBox x:Name="CarrierLoop" Content="Зациклить файл"/><CheckBox x:Name="CarrierRestart" Content="Начинать файл сначала при включении вокодера"/>
+<DockPanel><TextBlock Text="Уровень несущей"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=CarrierGain, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="CarrierGain" Minimum="0" Maximum="4"/><TextBlock Foreground="#9EAFBE" Text="Речь формирует огибающие, файл даёт тембр. Файл не подмешивается напрямую. Без речи вокодер молчит."/>
+ </StackPanel></GroupBox><GroupBox Header="04 / Эхо"><StackPanel><CheckBox x:Name="EchoEnabled" Content="Эхо включено"/><DockPanel><TextBlock Text="Задержка, мс"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=EchoMs, Path=Value, StringFormat=F0}"/></DockPanel><Slider x:Name="EchoMs" Minimum="20" Maximum="1500"/><DockPanel><TextBlock Text="Обратная связь"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=EchoFeedback, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="EchoFeedback" Minimum="0" Maximum="0.85"/><DockPanel><TextBlock Text="Уровень эха"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=EchoMix, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="EchoMix" Minimum="0" Maximum="1"/></StackPanel></GroupBox><GroupBox Header="05 / Реверберация"><StackPanel><CheckBox x:Name="ReverbEnabled" Content="Реверберация включена"/><DockPanel><TextBlock Text="Размер / затухание"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=ReverbSize, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="ReverbSize" Minimum="0" Maximum="0.9"/><DockPanel><TextBlock Text="Уровень реверберации"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=ReverbMix, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="ReverbMix" Minimum="0" Maximum="1"/><TextBlock Foreground="#9EAFBE" Text="Выключение эха/реверберации оставляет затухающий хвост. Mute микрофона глушит и его эффекты. PANIC глушит всё."/></StackPanel></GroupBox></StackPanel></ScrollViewer></TabItem>
+   <TabItem Header="Саундпад"><ScrollViewer VerticalScrollBarVisibility="Auto" Foreground="#E3ECF4"><Grid Margin="20"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+    <StackPanel Margin="0,0,20,0"><TextBlock Text="Локальная библиотека" FontSize="20"/><Button x:Name="ImportButton" Content="Импортировать звук…" Click="ImportSound"/>
+     <ListBox Foreground="#15202B" x:Name="SoundList" Height="320" SelectionChanged="SoundSelected"/>
+     <Button Content="Удалить из библиотеки" Click="RemoveSound"/>
+     <TextBlock Text="MP3 / WAV / AIFF / WMA. До 5 минут на файл, до 384 МиБ декодированных данных суммарно. Импорт копирует файл в библиотеку VoiceKit." Foreground="#9EAFBE"/>
+    </StackPanel>
+    <StackPanel Grid.Column="1"><TextBlock Text="Кнопка / привязка" FontSize="20"/>
+     <TextBlock Text="Название"/><TextBox x:Name="SoundName"/>
+     <TextBlock Text="Хоткей (пусто = не назначен)"/><TextBox x:Name="SoundHotkey"/>
+     <TextBlock Text="Запуск"/><ComboBox x:Name="SoundTrigger"><ComboBoxItem Content="Однократно по нажатию"/><ComboBoxItem Content="Пока удерживается"/><ComboBoxItem Content="Тоггл: нажал — вкл / выкл"/></ComboBox>
+     <CheckBox x:Name="SoundLoop" Content="Зацикливать"/>
+     <TextBlock Text="Повторное нажатие"/><ComboBox x:Name="SoundRetrigger"><ComboBoxItem Content="Игнорировать, доиграть"/><ComboBoxItem Content="Начать заново"/><ComboBoxItem Content="Ещё одна копия поверх"/></ComboBox>
+<DockPanel><TextBlock Text="Громкость звука"/><TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding ElementName=ClipGain, Path=Value, StringFormat=F2}"/></DockPanel><Slider x:Name="ClipGain" Minimum="0" Maximum="2"/><Button Content="Применить к звуку" Click="ApplySound"/>
+     <Button x:Name="PlayButton" Content="▶ Проиграть / удерживать" Click="PlaySoundClick" PreviewMouseLeftButtonDown="PlaySoundDown" PreviewMouseLeftButtonUp="PlaySoundUp" LostMouseCapture="PlaySoundLostCapture"/>
+     <TextBlock Foreground="#9EAFBE" Text="До 32 одновременных голосов. Для удержания используй мышь или назначенный глобальный хоткей. Ctrl+Alt+F4 по умолчанию останавливает все звуки."/>
+    </StackPanel>
+   </Grid></ScrollViewer></TabItem>
+   <TabItem Header="Пресеты и хоткеи"><ScrollViewer VerticalScrollBarVisibility="Auto" Foreground="#E3ECF4"><StackPanel Margin="20">
+    <GroupBox Header="Пресеты цепочки эффектов"><StackPanel><ComboBox x:Name="PresetList" SelectionChanged="PresetSelected"/>
+     <TextBlock Text="Название нового пресета"/><TextBox x:Name="PresetName"/>
+     <TextBlock Text="Хоткей выбранного / нового пресета"/><TextBox x:Name="PresetHotkey"/>
+     <WrapPanel><Button Content="Сохранить новый" Click="SavePreset"/><Button Content="Применить выбранный" Click="ApplyPreset"/><Button Content="Обновить выбранный" Click="UpdatePreset"/><Button Content="Удалить" Click="DeletePreset"/></WrapPanel>
+     <TextBlock Foreground="#9EAFBE" Text="Пресет хранит эффекты и выбранную несущую, но не устройства, mute и мониторинг. Изменение пресета не переключает маршруты."/>
+    </StackPanel></GroupBox>
+    <GroupBox Header="Глобальные хоткеи"><StackPanel><DataGrid x:Name="HotkeyGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" Foreground="#15202B" MinHeight="210">
+     <DataGrid.Columns><DataGridTextColumn Header="Действие" Binding="{Binding Label}" IsReadOnly="True" Width="*"/><DataGridTextColumn Header="Комбинация" Binding="{Binding Gesture, UpdateSourceTrigger=PropertyChanged}" Width="220"/></DataGrid.Columns>
+    </DataGrid><Button Content="Применить хоткеи" HorizontalAlignment="Left" Click="ApplyHotkeys"/>
+     <TextBlock Foreground="#9EAFBE" Text="Формат: Ctrl+Alt+F1, Shift+F13, NumPad1. Занятые нами нажатия подавляются, но эксклюзивность в играх и повышенных процессах не гарантируется. Дубликаты внутри VoiceKit запрещены. Мышь пока не поддержана."/>
+    </StackPanel></GroupBox>
+   </StackPanel></ScrollViewer></TabItem>
+   <TabItem Header="Диагностика"><ScrollViewer VerticalScrollBarVisibility="Auto" Foreground="#E3ECF4"><StackPanel Margin="20">
+    <TextBlock Text="Состояние тракта" FontSize="22"/><TextBlock x:Name="DiagnosticsLabel" FontFamily="Consolas" Text="Запусти аудио для просмотра показателей."/>
+    <TextBlock Text="Что проверять" FontSize="20"/><TextBlock Foreground="#9EAFBE" Text="• Очереди должны колебаться около цели, а не расти минутами.&#10;• Underrun / resync не должны постоянно увеличиваться. При треске увеличь буфер.&#10;• Время DSP должно быть заметно меньше длительности блока.&#10;• Задержка очередей не включает драйвер, VB-CABLE, алгоритм питча и Discord.&#10;• После потери устройства или сна передача останавливается. Переподключи устройство и запусти аудио заново. Автовыхода на колонки нет.&#10;• PANIC фиксируется до остановки и нового запуска: старые хвосты и буферы не восстанавливаются."/>
+    <Button Content="Открыть папку настроек" HorizontalAlignment="Left" Click="OpenSettingsFolder"/>
+   </StackPanel></ScrollViewer></TabItem>
+  </TabControl>
+  <TextBlock Grid.Row="3" Margin="0,14,0,0" Foreground="#9EAFBE" Text="48 kHz · mono DSP → stereo outputs   /   VB-CABLE   /   Windows 11"/>
+ </Grid>
+</Window>
