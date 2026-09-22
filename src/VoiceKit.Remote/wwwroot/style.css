@@ -975,3 +975,14 @@ dialog label {
     font-size: 8px;
   }
 }
+
+.effect-card.wobble {
+  --accent: #f3a6b8;
+  --tint: #f3a6b80a;
+}
+.parameter-note {
+  margin-top: 16px;
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--muted);
+}

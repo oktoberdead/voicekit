@@ -10,6 +10,7 @@ public sealed record EffectPatch(bool? Enabled = null, Dictionary<string, double
         var next = effect switch
         {
             "pitch" => current with { PitchEnabled = Enabled ?? current.PitchEnabled },
+            "wobble" => current with { WobbleEnabled = Enabled ?? current.WobbleEnabled },
             "robot" => current with { RobotEnabled = Enabled ?? current.RobotEnabled },
             "echo" => current with { EchoEnabled = Enabled ?? current.EchoEnabled },
             "reverb" => current with { ReverbEnabled = Enabled ?? current.ReverbEnabled },
@@ -27,6 +28,9 @@ public sealed record EffectPatch(bool? Enabled = null, Dictionary<string, double
             next = (effect, name) switch
             {
                 ("pitch", "semitones") => next with { PitchSemitones = Check(value, -12, 12) },
+                ("wobble", "minSemitones") => next with { WobbleMinSemitones = Check(value, -12, 12) },
+                ("wobble", "maxSemitones") => next with { WobbleMaxSemitones = Check(value, -12, 12) },
+                ("wobble", "rateHz") => next with { WobbleRateHz = Check(value, .1, 12) },
                 ("robot", "hz") => next with { RobotHz = Check(value, 10, 300) },
                 ("robot", "mix") => next with { RobotMix = Check(value, 0, 1) },
                 ("echo", "delayMs") => next with { EchoMs = Check(value, 20, 1500) },
@@ -37,6 +41,8 @@ public sealed record EffectPatch(bool? Enabled = null, Dictionary<string, double
                 _ => throw new ArgumentException($"Неизвестный параметр: {name}.")
             };
         }
+        if (effect == "wobble" && next.WobbleMinSemitones > next.WobbleMaxSemitones)
+            throw new ArgumentException("Нижняя граница воббла не может быть выше верхней.");
         return next;
     }
 }
@@ -46,8 +52,9 @@ public sealed record PitchControlState(bool Enabled, double Semitones);
 public sealed record RobotControlState(bool Enabled, double Hz, double Mix);
 public sealed record EchoControlState(bool Enabled, double DelayMs, double Feedback, double Mix);
 public sealed record ReverbControlState(bool Enabled, double Size, double Mix);
+public sealed record WobbleControlState(bool Enabled, double MinSemitones, double MaxSemitones, double RateHz);
 public sealed record RemoteEffectsState(PitchControlState Pitch, RobotControlState Robot,
-    EchoControlState Echo, ReverbControlState Reverb);
+    EchoControlState Echo, ReverbControlState Reverb, WobbleControlState Wobble);
 public sealed record RemoteControlState(long Revision, RemoteEngineState Engine, RemoteEffectsState Effects)
 {
     public static RemoteControlState From(AudioSettings settings, bool running, bool panic)
@@ -56,6 +63,7 @@ public sealed record RemoteControlState(long Revision, RemoteEngineState Engine,
         return new(0, new(running, panic, e.Enabled, settings.MicMuted), new(
             new(e.PitchEnabled, e.PitchSemitones), new(e.RobotEnabled, e.RobotHz, e.RobotMix),
             new(e.EchoEnabled, e.EchoMs, e.EchoFeedback, e.EchoMix),
-            new(e.ReverbEnabled, e.ReverbSize, e.ReverbMix)));
+            new(e.ReverbEnabled, e.ReverbSize, e.ReverbMix),
+            new(e.WobbleEnabled, e.WobbleMinSemitones, e.WobbleMaxSemitones, e.WobbleRateHz)));
     }
 }

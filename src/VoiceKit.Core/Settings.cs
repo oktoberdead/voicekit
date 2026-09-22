@@ -10,6 +10,10 @@ public sealed record EffectSettings
     public bool Enabled { get; init; } = true;
     public bool PitchEnabled { get; init; }
     public double PitchSemitones { get; init; }
+    public bool WobbleEnabled { get; init; }
+    public double WobbleMinSemitones { get; init; } = -2;
+    public double WobbleMaxSemitones { get; init; } = 2;
+    public double WobbleRateHz { get; init; } = 3;
     public bool RobotEnabled { get; init; }
     public double RobotHz { get; init; } = 70;
     public double RobotMix { get; init; } = .8;
@@ -31,6 +35,9 @@ public sealed record EffectSettings
     public EffectSettings Validated() => this with
     {
         PitchSemitones = Safe(PitchSemitones, -12, 12, 0),
+        WobbleMinSemitones = Math.Min(Safe(WobbleMinSemitones, -12, 12, -2), Safe(WobbleMaxSemitones, -12, 12, 2)),
+        WobbleMaxSemitones = Math.Max(Safe(WobbleMinSemitones, -12, 12, -2), Safe(WobbleMaxSemitones, -12, 12, 2)),
+        WobbleRateHz = Safe(WobbleRateHz, .1, 12, 3),
         RobotHz = Safe(RobotHz, 10, 300, 70), RobotMix = Safe(RobotMix, 0, 1, .8),
         CarrierHz = Safe(CarrierHz, 45, 440, 110), CarrierGain = Safe(CarrierGain, 0, 4, 1),
         EchoMs = Safe(EchoMs, 20, 1500, 280), EchoFeedback = Safe(EchoFeedback, 0, .85, .3),

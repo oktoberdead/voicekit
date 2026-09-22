@@ -54,6 +54,12 @@ public class RemoteServerTests
         Assert.True(settings.Effects.VocoderEnabled);
         Assert.Equal(HttpStatusCode.BadRequest, (await http.PatchAsJsonAsync("/api/effects/vocoder", new { enabled = false })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await http.PatchAsJsonAsync("/api/effects/echo", new { arbitrary = "invalid" })).StatusCode);
+        var wobble = await http.PatchAsJsonAsync("/api/effects/wobble", new { enabled = true, parameters = new { minSemitones = -4, maxSemitones = 6, rateHz = .5 } });
+        wobble.EnsureSuccessStatusCode();
+        Assert.True(settings.Effects.WobbleEnabled); Assert.Equal(.5, settings.Effects.WobbleRateHz);
+        Assert.True(settings.Effects.VocoderEnabled);
+        Assert.Equal(HttpStatusCode.BadRequest, (await http.PatchAsJsonAsync("/api/effects/wobble", new { parameters = new { minSemitones = 8, maxSemitones = -8 } })).StatusCode);
+        Assert.Equal(-4, settings.Effects.WobbleMinSemitones); Assert.Equal(6, settings.Effects.WobbleMaxSemitones);
         http.DefaultRequestHeaders.Add("Origin", "https://untrusted.example");
         Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync("/api/state")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync("/settings.json")).StatusCode);

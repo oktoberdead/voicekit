@@ -85,7 +85,7 @@ test("Safety state is displayed without letting the phone clear PANIC or bypass"
   });
   await connected(page);
   await expect(page.locator("#engine-notice")).toContainText("PANIC");
-  await expect(page.locator("#effects .effect-card")).toHaveCount(4);
+  await expect(page.locator("#effects .effect-card")).toHaveCount(5);
   await expect(page.locator("#effects")).not.toContainText("Вокодер");
 });
 test("Phone layouts have no horizontal overflow or clipped effect titles", async ({
@@ -94,7 +94,7 @@ test("Phone layouts have no horizontal overflow or clipped effect titles", async
   for (const width of [320, 390, 768]) {
     await page.setViewportSize({ width, height: 844 });
     await connected(page);
-    for (const id of ["pitch", "robot", "echo", "reverb"])
+    for (const id of ["pitch", "robot", "echo", "reverb", "wobble"])
       await page.locator(`#settings-${id}`).click();
     expect(
       await page.evaluate(
@@ -142,4 +142,29 @@ test("Keyboard and production CSP allow toggles and sliders without inline-scrip
   await page.keyboard.press(value >= 1 ? "ArrowLeft" : "ArrowRight");
   await expect(slider).not.toHaveValue(String(value));
   expect(errors).toEqual([]);
+});
+
+test("Wobble toggles, syncs both bounds, preserves sub-Hz rate and survives reload", async ({
+  page,
+}) => {
+  await connected(page);
+  await page.locator("#settings-wobble").click();
+  await page.locator("#wobble-minSemitones").fill("5");
+  await expect(page.locator("#wobble-maxSemitones")).toHaveValue("5");
+  await page.locator("#wobble-maxSemitones").fill("-5");
+  await expect(page.locator("#wobble-minSemitones")).toHaveValue("-5");
+  await page.locator("#wobble-rateHz").fill("0.1");
+  await expect(page.locator("#value-wobble-rateHz")).toHaveText("0.1 Гц");
+  const button = page.locator("#toggle-wobble");
+  if ((await button.getAttribute("aria-pressed")) !== "true")
+    await button.click();
+  await expect(page.locator("#sync-label")).toHaveText(
+    "Настройки синхронизированы",
+  );
+  await page.reload();
+  await expect(button).toBeEnabled();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#wobble-minSemitones")).toHaveValue("-5");
+  await expect(page.locator("#wobble-maxSemitones")).toHaveValue("-5");
+  await expect(page.locator("#wobble-rateHz")).toHaveValue("0.1");
 });

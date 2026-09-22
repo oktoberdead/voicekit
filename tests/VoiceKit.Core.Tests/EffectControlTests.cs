@@ -21,6 +21,10 @@ public class EffectControlTests
     }
     [Theory]
     [InlineData("pitch", "semitones", 12.1)]
+    [InlineData("wobble", "minSemitones", -12.1)]
+    [InlineData("wobble", "maxSemitones", double.NaN)]
+    [InlineData("wobble", "rateHz", 0)]
+    [InlineData("wobble", "rateHz", 12.1)]
     [InlineData("robot", "hz", 0)]
     [InlineData("robot", "mix", -1)]
     [InlineData("echo", "feedback", .86)]

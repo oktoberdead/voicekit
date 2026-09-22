@@ -108,12 +108,69 @@ export const EFFECTS = [
       },
     ],
   },
+  {
+    id: "wobble",
+    name: "Воббл",
+    subtitle: "Голос на своей волне.",
+    kind: "WOBBLE PITCH",
+    index: "05",
+    params: [
+      {
+        key: "minSemitones",
+        label: "Нижняя граница",
+        min: -12,
+        max: 12,
+        step: 0.1,
+        unit: "st",
+        initial: -2,
+      },
+      {
+        key: "maxSemitones",
+        label: "Верхняя граница",
+        min: -12,
+        max: 12,
+        step: 0.1,
+        unit: "st",
+        initial: 2,
+      },
+      {
+        key: "rateHz",
+        label: "Частота колебаний",
+        min: 0.1,
+        max: 12,
+        step: 0.1,
+        unit: "Гц",
+        initial: 3,
+      },
+    ],
+  },
 ];
 export function formatValue(value, parameter) {
   if (parameter.unit === "%") return `${Math.round(value * 100)}%`;
   if (parameter.unit === "st")
     return `${value > 0 ? "+" : ""}${value.toFixed(1)} st`;
-  return `${Math.round(value)} ${parameter.unit}`;
+  return `${parameter.step < 1 ? value.toFixed(1) : Math.round(value)} ${parameter.unit}`;
+}
+// Treat the two bounds as one atomic setting, including when they cross during a drag.
+export function parameterPatch(effect, key, value, current) {
+  if (
+    effect === "wobble" &&
+    (key === "minSemitones" || key === "maxSemitones")
+  ) {
+    return {
+      parameters:
+        key === "minSemitones"
+          ? {
+              minSemitones: value,
+              maxSemitones: Math.max(value, current.maxSemitones),
+            }
+          : {
+              minSemitones: Math.min(value, current.minSemitones),
+              maxSemitones: value,
+            },
+    };
+  }
+  return { parameters: { [key]: value } };
 }
 export function mergePatch(first = {}, next) {
   const result = { ...first, ...next };

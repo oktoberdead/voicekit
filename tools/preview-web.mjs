@@ -16,6 +16,7 @@ let state = {
     robot: { enabled: false, hz: 70, mix: 0.8 },
     echo: { enabled: true, delayMs: 280, feedback: 0.3, mix: 0.25 },
     reverb: { enabled: false, size: 0.55, mix: 0.25 },
+    wobble: { enabled: false, minSemitones: -2, maxSemitones: 2, rateHz: 3 },
   },
 };
 const assets = {

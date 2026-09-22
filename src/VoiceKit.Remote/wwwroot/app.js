@@ -1,4 +1,9 @@
-import { ControlClient, EFFECTS, formatValue } from "./control.js";
+import {
+  ControlClient,
+  EFFECTS,
+  formatValue,
+  parameterPatch,
+} from "./control.js";
 
 const $ = (id) => document.getElementById(id);
 const demo = document.querySelector('meta[name="voicekit-demo"]');
@@ -9,6 +14,8 @@ const CHEVRON =
 const shapes = {
   pitch:
     '<path d="M12 42v12M24 29v38M36 17v62M48 30v36M60 10v76M72 24v48M84 38v20"/>',
+  wobble:
+    '<path d="M10 48c7 0 7-25 15-25s8 50 16 50 8-50 16-50 8 50 16 50 7-25 13-25"/><path d="M11 12h74M11 84h74" stroke-dasharray="3 6" stroke-width="1"/>',
   robot:
     '<rect x="21" y="29" width="54" height="46" rx="13"/><path d="M48 29V15M43 15h10M12 43v18M84 43v18M36 60h24"/><circle cx="36" cy="45" r="3"/><circle cx="60" cy="45" r="3"/>',
   echo: '<path d="M15 42v12M28 29a28 28 0 0 1 0 38M43 20a41 41 0 0 1 0 56M59 11a53 53 0 0 1 0 74"/>',
@@ -53,7 +60,12 @@ for (const effect of EFFECTS) {
     input.addEventListener("input", () => {
       const value = Number(input.value);
       paintSlider(input, parameter, value);
-      client.enqueue(effect.id, { parameters: { [parameter.key]: value } });
+      const current = client.view?.effects[effect.id];
+      if (current)
+        client.enqueue(
+          effect.id,
+          parameterPatch(effect.id, parameter.key, value, current),
+        );
     });
   }
   card.querySelector(".effect-toggle").addEventListener("click", () => {
@@ -66,6 +78,13 @@ for (const effect of EFFECTS) {
     button.setAttribute("aria-expanded", String(expanded));
     panel.hidden = !expanded;
   });
+  if (effect.id === "wobble") {
+    const note = document.createElement("p");
+    note.className = "parameter-note";
+    note.textContent =
+      "Границы добавляются к обычному питчу. При пересечении соседняя граница подтягивается; одинаковые дают постоянный сдвиг.";
+    panel.append(note);
+  }
   cards.set(effect.id, card);
   $("effects").append(card);
 }
@@ -88,18 +107,20 @@ function render() {
     card.classList.toggle("is-on", enabled);
     card.classList.toggle("is-offline", !online);
     const button = card.querySelector(".effect-toggle");
-    button.disabled = !online;
+    button.disabled = !online || !state;
     button.setAttribute("aria-pressed", String(enabled));
     card.querySelector(".state-label").textContent = enabled
       ? "Включён"
       : "Выключен";
     const summary = effect.params[0];
     card.querySelector(".effect-summary").textContent = state
-      ? formatValue(state[summary.key], summary)
+      ? effect.id === "wobble"
+        ? `${state.rateHz.toFixed(1)} Гц`
+        : formatValue(state[summary.key], summary)
       : "—";
     for (const parameter of effect.params) {
       const input = $(`${effect.id}-${parameter.key}`);
-      input.disabled = !online;
+      input.disabled = !online || !state;
       if (!dragging.has(input.id))
         paintSlider(
           input,
@@ -109,8 +130,8 @@ function render() {
     }
   }
   $("active-count").textContent = snapshot
-    ? `${String(count).padStart(2, "0")} / 04 включено`
-    : "— / 04 включено";
+    ? `${String(count).padStart(2, "0")} / ${String(EFFECTS.length).padStart(2, "0")} включено`
+    : `— / ${String(EFFECTS.length).padStart(2, "0")} включено`;
   $("sync-label").textContent = !online
     ? "Ожидание подключения"
     : busy

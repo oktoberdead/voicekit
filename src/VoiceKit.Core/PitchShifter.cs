@@ -28,11 +28,12 @@ internal sealed class PitchShifter
         for (int i = 0; i < _twiddles.Length; i++)
             _twiddles[i] = Complex.FromPolarCoordinates(1, -2 * Math.PI * i / Size);
     }
-    public float Process(float input, double semitones, bool enabled)
+    public float Process(float input, double semitones, bool enabled, bool modulated = false)
     {
         _input[_inputPosition] = input;
         _inputPosition = (_inputPosition + 1) % Size;
-        DspMath.Smooth(ref _semitones, semitones, .0005f);
+        // The LFO already smooths its controls; do not low-pass away its fast oscillation.
+        DspMath.Smooth(ref _semitones, semitones, modulated ? .02f : .0005f);
         if (--_untilFrame == 0)
         {
             TransformFrame(Math.Pow(2, _semitones / 12.0));
@@ -41,7 +42,7 @@ internal sealed class PitchShifter
         float shifted = _output[_outputPosition];
         _output[_outputPosition] = 0;
         _outputPosition = (_outputPosition + 1) % _output.Length;
-        float wet = DspMath.Smooth(ref _wet, enabled && Math.Abs(semitones) > .001 ? 1 : 0);
+        float wet = DspMath.Smooth(ref _wet, enabled && (modulated || Math.Abs(semitones) > .001) ? 1 : 0);
         return DspMath.Lerp(input, shifted, wet);
     }
     private void TransformFrame(double ratio)

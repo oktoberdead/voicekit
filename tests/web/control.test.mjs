@@ -4,6 +4,7 @@ import {
   ControlClient,
   EFFECTS,
   mergePatch,
+  parameterPatch,
   formatValue,
 } from "../../src/VoiceKit.Remote/wwwroot/control.js";
 const initial = () => ({
@@ -19,6 +20,7 @@ const initial = () => ({
     robot: { enabled: false, hz: 70, mix: 0.8 },
     echo: { enabled: false, delayMs: 280, feedback: 0.3, mix: 0.25 },
     reverb: { enabled: false, size: 0.55, mix: 0.25 },
+    wobble: { enabled: false, minSemitones: -2, maxSemitones: 2, rateHz: 3 },
   },
 });
 const response = (data, status = 200) => ({
@@ -49,10 +51,10 @@ function harness(t, handler) {
   t.after(() => client.stop(false));
   return { state, writes, statuses, client };
 }
-test("Only the four requested effects are exposed, with DSP-compatible ranges", () => {
+test("Only the five supported effects are exposed, with DSP-compatible ranges", () => {
   assert.deepEqual(
     EFFECTS.map((x) => x.id),
-    ["pitch", "robot", "echo", "reverb"],
+    ["pitch", "robot", "echo", "reverb", "wobble"],
   );
   assert.equal(
     EFFECTS.find((x) => x.id === "echo").params.find(
@@ -162,4 +164,43 @@ test("Continuous slider movement sends before the user releases it (throttle, no
     await new Promise((resolve) => setTimeout(resolve, 12));
   }
   assert.ok(writes.length >= 1);
+});
+
+test("Wobble bounds move together atomically when they cross", () => {
+  const current = { minSemitones: -2, maxSemitones: 2, rateHz: 3 };
+  assert.deepEqual(parameterPatch("wobble", "minSemitones", 5, current), {
+    parameters: { minSemitones: 5, maxSemitones: 5 },
+  });
+  assert.deepEqual(parameterPatch("wobble", "maxSemitones", -5, current), {
+    parameters: { minSemitones: -5, maxSemitones: -5 },
+  });
+  assert.deepEqual(parameterPatch("wobble", "minSemitones", -4, current), {
+    parameters: { minSemitones: -4, maxSemitones: 2 },
+  });
+  assert.deepEqual(parameterPatch("wobble", "rateHz", 0.1, current), {
+    parameters: { rateHz: 0.1 },
+  });
+});
+test("Wobble frequency displays sub-Hz values, not rounded zero", () => {
+  const parameter = EFFECTS.find((x) => x.id === "wobble").params.find(
+    (x) => x.key === "rateHz",
+  );
+  assert.equal(formatValue(0.1, parameter), "0.1 Гц");
+});
+test("Wobble bounds and rate coalesce without inverted ranges", async (t) => {
+  const { client, writes } = harness(t);
+  await client.start("test");
+  client.enqueue(
+    "wobble",
+    parameterPatch("wobble", "minSemitones", 5, client.view.effects.wobble),
+  );
+  client.enqueue(
+    "wobble",
+    parameterPatch("wobble", "maxSemitones", -5, client.view.effects.wobble),
+  );
+  client.enqueue("wobble", { parameters: { rateHz: 8 } });
+  await client.flush();
+  assert.deepEqual(writes, [
+    { parameters: { minSemitones: -5, maxSemitones: -5, rateHz: 8 } },
+  ]);
 });

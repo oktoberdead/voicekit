@@ -175,6 +175,7 @@ internal sealed class Reverb
 public sealed class VoiceProcessor
 {
     private readonly PitchShifter _pitch = new();
+    private readonly WobbleModulator _wobble = new();
     private readonly Vocoder _vocoder = new();
     private readonly Echo _echo = new();
     private readonly Reverb _reverb = new();
@@ -183,7 +184,11 @@ public sealed class VoiceProcessor
     public float Process(float input, EffectSettings settings, AudioClip? carrier = null)
     {
         input = float.IsFinite(input) ? Math.Clamp(input, -8, 8) : 0;
-        float x = _pitch.Process(input, settings.PitchSemitones, settings.Enabled && settings.PitchEnabled);
+        double wobble = _wobble.Next(settings);
+        bool modulated = _wobble.Active;
+        // One STFT stage: no second FFT, buffering layer or dry copy for wobble.
+        double pitch = modulated ? (settings.PitchEnabled ? settings.PitchSemitones : 0) + wobble : settings.PitchSemitones;
+        float x = _pitch.Process(input, pitch, settings.Enabled && (settings.PitchEnabled || modulated), modulated);
         DspMath.Smooth(ref _robotHz, settings.RobotHz);
         _robotPhase = (_robotPhase + _robotHz / SoundMixer.SampleRate) % 1;
         float robot = x * (float)Math.Cos(2 * Math.PI * _robotPhase);

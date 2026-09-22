@@ -33,7 +33,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        AddHandler(RangeBase.ValueChangedEvent, new RoutedPropertyChangedEventHandler<double>((_, _) => AudioChanged()));
+        AddHandler(RangeBase.ValueChangedEvent, new RoutedPropertyChangedEventHandler<double>(AudioSliderChanged));
         AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler((_, _) => AudioChanged()));
         AddHandler(ToggleButton.UncheckedEvent, new RoutedEventHandler((_, _) => AudioChanged()));
         _diagnostics.Tick += (_, _) => UpdateDiagnostics();
@@ -154,6 +154,8 @@ public partial class MainWindow : Window
             var s = a.Effects;
             EffectsEnabled.IsChecked = s.Enabled;
             PitchEnabled.IsChecked = s.PitchEnabled; Pitch.Value = s.PitchSemitones;
+            WobbleEnabled.IsChecked = s.WobbleEnabled;
+            WobbleMin.Value = s.WobbleMinSemitones; WobbleMax.Value = s.WobbleMaxSemitones; WobbleRate.Value = s.WobbleRateHz;
             RobotEnabled.IsChecked = s.RobotEnabled; RobotHz.Value = s.RobotHz; RobotMix.Value = s.RobotMix;
             VocoderEnabled.IsChecked = s.VocoderEnabled; CarrierKindBox.SelectedIndex = (int)s.Carrier;
             CarrierHz.Value = s.CarrierHz; CarrierChord.IsChecked = s.CarrierChord;
@@ -167,6 +169,21 @@ public partial class MainWindow : Window
         }
         finally { _applying = false; }
     }
+    private void AudioSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!_ready || _applying) return;
+        _applying = true;
+        try
+        {
+            // Moving an endpoint past its neighbour moves that neighbour too; never invert the range.
+            if (ReferenceEquals(e.OriginalSource, WobbleMin) && WobbleMin.Value > WobbleMax.Value)
+                WobbleMax.Value = WobbleMin.Value;
+            else if (ReferenceEquals(e.OriginalSource, WobbleMax) && WobbleMax.Value < WobbleMin.Value)
+                WobbleMin.Value = WobbleMax.Value;
+        }
+        finally { _applying = false; }
+        AudioChanged();
+    }
     private void AudioChanged()
     {
         if (!_ready || _applying) return;
@@ -174,6 +191,8 @@ public partial class MainWindow : Window
         {
             Enabled = EffectsEnabled.IsChecked == true,
             PitchEnabled = PitchEnabled.IsChecked == true, PitchSemitones = Pitch.Value,
+            WobbleEnabled = WobbleEnabled.IsChecked == true,
+            WobbleMinSemitones = WobbleMin.Value, WobbleMaxSemitones = WobbleMax.Value, WobbleRateHz = WobbleRate.Value,
             RobotEnabled = RobotEnabled.IsChecked == true, RobotHz = RobotHz.Value, RobotMix = RobotMix.Value,
             VocoderEnabled = VocoderEnabled.IsChecked == true, Carrier = (CarrierKind)Math.Max(0, CarrierKindBox.SelectedIndex),
             CarrierHz = CarrierHz.Value, CarrierChord = CarrierChord.IsChecked == true, CarrierGain = CarrierGain.Value,
