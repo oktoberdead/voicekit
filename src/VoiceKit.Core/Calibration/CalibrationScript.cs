@@ -32,7 +32,7 @@ public static class CalibrationScript
 /// <summary>Saved only by an explicit user action. This is a reference sample, not a trained voice model.</summary>
 public sealed record CalibrationProfile
 {
-    public int SchemaVersion { get; init; } = 1;
+    public int SchemaVersion { get; init; } = 2;
     public int ScriptVersion { get; init; } = CalibrationScript.Version;
     public Guid Id { get; init; } = Guid.NewGuid();
     public string Name { get; init; } = "Мой голос";

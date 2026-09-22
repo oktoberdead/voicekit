@@ -1,11 +1,13 @@
+// Frozen from 45b8f83 for disabled-formant bit-identity regression; not production DSP.
 using System.Numerics;
 
-namespace VoiceKit.Core;
+using VoiceKit.Core;
+namespace VoiceKit.Core.Tests.Fixtures;
 
 /// <summary>Streaming STFT pitch shifter, 1024-point FFT, 4x overlap.
 /// Spectral bins are remapped using instantaneous frequencies, not resampled audio.
-/// Optional cepstral envelope preservation/warping. No transient locking or per-frame allocation.</summary>
-internal sealed class PitchShifter
+/// No formant preservation, transient locking or per-frame allocation.</summary>
+internal sealed class LegacyPitchShifter
 {
     private const int Size = 1024, Hop = Size / 4;
     private readonly float[] _input = new float[Size], _output = new float[Size * 2];
@@ -15,9 +17,8 @@ internal sealed class PitchShifter
     private readonly Complex[] _spectrum = new Complex[Size], _twiddles = new Complex[Size / 2];
     private readonly int[] _reverse = new int[Size];
     private int _inputPosition, _outputPosition, _untilFrame = Hop;
-    private float _semitones, _wet, _formantSemitones, _formantMix;
-    private readonly FormantEnvelope _envelope = new();
-    public PitchShifter()
+    private float _semitones, _wet;
+    public LegacyPitchShifter()
     {
         for (int i = 0; i < Size; i++)
         {
@@ -29,31 +30,27 @@ internal sealed class PitchShifter
         for (int i = 0; i < _twiddles.Length; i++)
             _twiddles[i] = Complex.FromPolarCoordinates(1, -2 * Math.PI * i / Size);
     }
-    public float Process(float input, double semitones, bool enabled, bool modulated = false, bool formantEnabled = false, double formantSemitones = 0)
+    public float Process(float input, double semitones, bool enabled, bool modulated = false)
     {
         _input[_inputPosition] = input;
         _inputPosition = (_inputPosition + 1) % Size;
         // The LFO already smooths its controls; do not low-pass away its fast oscillation.
         DspMath.Smooth(ref _semitones, semitones, modulated ? .02f : .0005f);
-        DspMath.Smooth(ref _formantMix, formantEnabled ? 1 : 0, .0005f);
-        DspMath.Smooth(ref _formantSemitones, formantSemitones, .0005f);
         if (--_untilFrame == 0)
         {
-            TransformFrame(Math.Pow(2, _semitones / 12.0), _formantMix > .00001f ? Math.Pow(2, _formantSemitones / 12.0) : 1);
+            TransformFrame(Math.Pow(2, _semitones / 12.0));
             _untilFrame = Hop;
         }
         float shifted = _output[_outputPosition];
         _output[_outputPosition] = 0;
         _outputPosition = (_outputPosition + 1) % _output.Length;
-        float wet = DspMath.Smooth(ref _wet, enabled && (formantEnabled || modulated || Math.Abs(semitones) > .001) ? 1 : 0);
+        float wet = DspMath.Smooth(ref _wet, enabled && (modulated || Math.Abs(semitones) > .001) ? 1 : 0);
         return DspMath.Lerp(input, shifted, wet);
     }
-    private void TransformFrame(double ratio, double formantRatio)
+    private void TransformFrame(double ratio)
     {
         for (int i = 0; i < Size; i++) _spectrum[i] = new Complex(_input[(_inputPosition + i) % Size] * _window[i], 0);
         Fft(false);
-        bool shape = _formantMix > .00001f;
-        if (shape) _envelope.Analyze(_spectrum);
         Array.Clear(_magnitudes);
         Array.Clear(_frequencySums);
         const double phaseStep = 2 * Math.PI * Hop / Size;
@@ -66,7 +63,6 @@ internal sealed class PitchShifter
             double frequency = (k + residual / phaseStep) * ratio;
             int destination = (int)Math.Round(k * ratio);
             if (destination < 1 || destination >= Size / 2) continue;
-            if (shape) magnitude *= _envelope.Gain(k, destination, formantRatio, _formantMix);
             _magnitudes[destination] += magnitude;
             _frequencySums[destination] += magnitude * frequency;
         }

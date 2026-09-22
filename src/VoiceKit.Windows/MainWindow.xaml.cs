@@ -154,6 +154,7 @@ public partial class MainWindow : Window
             var s = a.Effects;
             EffectsEnabled.IsChecked = s.Enabled;
             PitchEnabled.IsChecked = s.PitchEnabled; Pitch.Value = s.PitchSemitones;
+            FormantEnabled.IsChecked = s.FormantEnabled; FormantShift.Value = s.FormantSemitones;
             WobbleEnabled.IsChecked = s.WobbleEnabled;
             WobbleMin.Value = s.WobbleMinSemitones; WobbleMax.Value = s.WobbleMaxSemitones; WobbleRate.Value = s.WobbleRateHz;
             RobotEnabled.IsChecked = s.RobotEnabled; RobotHz.Value = s.RobotHz; RobotMix.Value = s.RobotMix;
@@ -191,6 +192,7 @@ public partial class MainWindow : Window
         {
             Enabled = EffectsEnabled.IsChecked == true,
             PitchEnabled = PitchEnabled.IsChecked == true, PitchSemitones = Pitch.Value,
+            FormantEnabled = FormantEnabled.IsChecked == true, FormantSemitones = FormantShift.Value,
             WobbleEnabled = WobbleEnabled.IsChecked == true,
             WobbleMinSemitones = WobbleMin.Value, WobbleMaxSemitones = WobbleMax.Value, WobbleRateHz = WobbleRate.Value,
             RobotEnabled = RobotEnabled.IsChecked == true, RobotHz = RobotHz.Value, RobotMix = RobotMix.Value,

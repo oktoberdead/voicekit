@@ -10,6 +10,9 @@ public sealed record EffectSettings
     public bool Enabled { get; init; } = true;
     public bool PitchEnabled { get; init; }
     public double PitchSemitones { get; init; }
+    // Opt-in: when enabled, 0 st preserves the estimated original envelope during pitch changes.
+    public bool FormantEnabled { get; init; }
+    public double FormantSemitones { get; init; }
     public bool WobbleEnabled { get; init; }
     public double WobbleMinSemitones { get; init; } = -2;
     public double WobbleMaxSemitones { get; init; } = 2;
@@ -35,6 +38,7 @@ public sealed record EffectSettings
     public EffectSettings Validated() => this with
     {
         PitchSemitones = Safe(PitchSemitones, -12, 12, 0),
+        FormantSemitones = Safe(FormantSemitones, -6, 6, 0),
         WobbleMinSemitones = Math.Min(Safe(WobbleMinSemitones, -12, 12, -2), Safe(WobbleMaxSemitones, -12, 12, 2)),
         WobbleMaxSemitones = Math.Max(Safe(WobbleMinSemitones, -12, 12, -2), Safe(WobbleMaxSemitones, -12, 12, 2)),
         WobbleRateHz = Safe(WobbleRateHz, .1, 12, 3),

@@ -32,7 +32,7 @@ public sealed class CalibrationStore(string root)
                 writer.Flush();
             }
             ct.ThrowIfCancellationRequested();
-            File.WriteAllText(Path.Combine(pending, "profile.json"), JsonSerializer.Serialize(profile with { Id = id }, _json));
+            File.WriteAllText(Path.Combine(pending, "profile.json"), JsonSerializer.Serialize(profile with { Id = id, SchemaVersion = 2 }, _json));
             ct.ThrowIfCancellationRequested();
             Directory.Move(pending, final); // same-volume, expose only a complete pair
             return Path.Combine(final, "profile.json");
@@ -44,7 +44,7 @@ public sealed class CalibrationStore(string root)
         if (new FileInfo(jsonPath).Length > 1_048_576) throw new InvalidDataException("Файл профиля слишком большой.");
         var profile = JsonSerializer.Deserialize<CalibrationProfile>(File.ReadAllText(jsonPath), _json)
             ?? throw new InvalidDataException("Пустой профиль.");
-        if (profile.SchemaVersion != 1 || profile.ScriptVersion != CalibrationScript.Version || profile.Reference is null || profile.Candidate is null)
+        if (profile.SchemaVersion is not (1 or 2) || profile.ScriptVersion != CalibrationScript.Version || profile.Reference is null || profile.Candidate is null)
             throw new InvalidDataException("Неподдерживаемая версия или повреждённый профиль.");
         // No file path from JSON is used. A profile can only reference the adjacent sample.wav.
         string wavPath = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(jsonPath))!, "sample.wav");

@@ -17,7 +17,7 @@ public class CalibrationStoreTests
             Assert.False(Directory.Exists(store.Root)); // merely creating the service must not persist a voice
             var samples = new float[4 * 48000];
             for (int i = 3 * 48000; i < samples.Length; i++) samples[i] = .1f * MathF.Sin(i * .03f);
-            var profile = new CalibrationProfile { Name = "Тест", Candidate = new() { PitchEnabled = true, PitchSemitones = 3.5 } };
+            var profile = new CalibrationProfile { Name = "Тест", Candidate = new() { PitchEnabled = true, PitchSemitones = 3.5, FormantEnabled = true, FormantSemitones = 1.5 } };
             string first = store.Save(profile, samples, CancellationToken.None);
             string second = store.Save(profile, samples, CancellationToken.None);
             Assert.NotEqual(first, second);
@@ -61,7 +61,11 @@ public class CalibrationStoreTests
             string path = store.Save(new(), samples, CancellationToken.None);
             File.WriteAllText(path, JsonSerializer.Serialize(new CalibrationProfile { SchemaVersion = 999 }));
             Assert.Throws<InvalidDataException>(() => store.Load(path, CancellationToken.None));
-            File.WriteAllText(path, JsonSerializer.Serialize(new CalibrationProfile()));
+            File.WriteAllText(path, "{\"SchemaVersion\":1,\"ScriptVersion\":1,\"Name\":\"Old\"}");
+            var legacy = store.Load(path, CancellationToken.None);
+            Assert.False(legacy.Profile.Candidate.FormantEnabled);
+            string upgraded = store.Save(legacy.Profile, legacy.Raw, CancellationToken.None);
+            Assert.Equal(2, store.Load(upgraded, CancellationToken.None).Profile.SchemaVersion);
             File.Delete(Path.Combine(Path.GetDirectoryName(path)!, "sample.wav"));
             Assert.Throws<FileNotFoundException>(() => store.Load(path, CancellationToken.None));
         }

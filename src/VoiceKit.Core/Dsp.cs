@@ -188,7 +188,11 @@ public sealed class VoiceProcessor
         bool modulated = _wobble.Active;
         // One STFT stage: no second FFT, buffering layer or dry copy for wobble.
         double pitch = modulated ? (settings.PitchEnabled ? settings.PitchSemitones : 0) + wobble : settings.PitchSemitones;
-        float x = _pitch.Process(input, pitch, settings.Enabled && (settings.PitchEnabled || modulated), modulated);
+        bool formants = settings.Enabled && settings.FormantEnabled;
+        // Formant-only processing must not activate a stored but disabled pitch value.
+        if (formants && !settings.PitchEnabled && !modulated) pitch = 0;
+        float x = _pitch.Process(input, pitch, settings.Enabled && (settings.PitchEnabled || modulated || formants),
+            modulated, formants, settings.FormantSemitones);
         DspMath.Smooth(ref _robotHz, settings.RobotHz);
         _robotPhase = (_robotPhase + _robotHz / SoundMixer.SampleRate) % 1;
         float robot = x * (float)Math.Cos(2 * Math.PI * _robotPhase);

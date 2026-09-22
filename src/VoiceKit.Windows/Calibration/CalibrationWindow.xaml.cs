@@ -28,6 +28,7 @@ public partial class CalibrationWindow : Window
     private float[]? _raw;
     private VoiceAnalysis? _analysis;
     private ComparisonAudio? _comparison;
+    private CalibrationExploration? _exploration;
     private bool _ready, _busy, _closed, _applying;
     private string _recordDeviceName;
     private long _recordStarted;
@@ -56,9 +57,11 @@ public partial class CalibrationWindow : Window
         bool idle = !_busy && _capture is null;
         RecordButton.IsEnabled = LoadButton.IsEnabled = idle;
         StopRecordButton.IsEnabled = _capture is not null;
-        SuggestButton.IsEnabled = idle && _analysis?.CanSuggestPitch == true;
-        RenderButton.IsEnabled = SaveButton.IsEnabled = idle && _raw is not null;
+        SuggestButton.IsEnabled = AutoExploreButton.IsEnabled = idle && _analysis?.CanSuggestPitch == true;
+        RenderButton.IsEnabled = ExploreButton.IsEnabled = SaveButton.IsEnabled = idle && _raw is not null;
         DryButton.IsEnabled = AButton.IsEnabled = BButton.IsEnabled = ApplyButton.IsEnabled = idle && _comparison is not null;
+        ExplorationBox.IsEnabled = idle && _exploration is not null;
+        CandidateFormant.IsEnabled = CandidateFormantShift.IsEnabled = idle;
         CandidateShift.IsEnabled = CandidatePitch.IsEnabled = CandidateEnabled.IsEnabled = PitchOnly.IsEnabled = NeutralReference.IsEnabled = idle;
         ExcerptBox.IsEnabled = MatchLevels.IsEnabled = TargetHz.IsEnabled = PreferredBox.IsEnabled = ProfileName.IsEnabled = idle;
     }
@@ -72,27 +75,36 @@ public partial class CalibrationWindow : Window
     }
     private void InvalidateComparison()
     {
-        StopPreview(); _comparison = null;
+        StopPreview(); _comparison = null; ClearExploration();
         PreviewInfo.Text = "Параметры изменены. Нажми «Подготовить A/B» перед прослушиванием/применением.";
         UpdateButtons();
     }
-    private void PopulateCandidate(EffectSettings effects)
+    private void ClearExploration()
     {
+        _exploration = null; ExplorationBox.ItemsSource = null;
+    }
+    private void PopulateCandidate(EffectSettings effects, bool resetIsolation = true)
+    {
+        bool wasApplying = _applying;
         _applying = true;
         try
         {
             _candidateBase = effects;
             CandidateEnabled.IsChecked = effects.Enabled; CandidatePitch.IsChecked = effects.PitchEnabled;
-            CandidateShift.Value = effects.PitchSemitones; PitchOnly.IsChecked = false;
+            CandidateShift.Value = effects.PitchSemitones;
+            if (resetIsolation) PitchOnly.IsChecked = false;
+            CandidateFormant.IsChecked = effects.FormantEnabled; CandidateFormantShift.Value = effects.FormantSemitones;
         }
-        finally { _applying = false; }
+        finally { _applying = wasApplying; }
     }
     private EffectSettings Reference() => NeutralReference.IsChecked == true ? new EffectSettings() : _reference;
     private EffectSettings Candidate() => (PitchOnly.IsChecked == true ? new EffectSettings() : _candidateBase) with
     {
         Enabled = CandidateEnabled.IsChecked == true,
         PitchEnabled = CandidatePitch.IsChecked == true,
-        PitchSemitones = CandidateShift.Value
+        PitchSemitones = CandidateShift.Value,
+        FormantEnabled = CandidateFormant.IsChecked == true,
+        FormantSemitones = CandidateFormantShift.Value
     };
     private void CandidateChanged(object sender, RoutedEventArgs e)
     {
@@ -109,7 +121,7 @@ public partial class CalibrationWindow : Window
         if (_raw is not null && MessageBox.Show(this, "Новый дубль заменит образец в памяти. Сохранённые профили останутся. Продолжить?", "Новая запись", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
         try
         {
-            StopPreview(); _comparison = null;
+            StopPreview(); _comparison = null; ClearExploration();
             var capture = new CalibrationCapture();
             _capture = capture; _recordStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             try { capture.Start(_input.Id); } catch { _capture = null; capture.Dispose(); throw; }
@@ -210,7 +222,7 @@ public partial class CalibrationWindow : Window
     private async void PrepareComparison(object sender, RoutedEventArgs e)
     {
         if (_busy || _raw is null || ExcerptBox.SelectedItem is not CalibrationSection excerpt) return;
-        StopPreview(); _comparison = null;
+        StopPreview(); _comparison = null; ClearExploration();
         var raw = _raw; var a = Reference(); var b = Candidate().Validated(); var carrier = _carrier;
         bool match = MatchLevels.IsChecked == true;
         SetBusy(true, "Готовим одинаковые фрагменты A/B…"); var ct = BeginWork();
@@ -227,9 +239,79 @@ public partial class CalibrationWindow : Window
         catch (Exception ex) { Error("Не удалось подготовить A/B", ex); }
         finally { if (!_closed) SetBusy(false); }
     }
+    private async void StartGuidedExploration(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _capture is not null || _analysis?.CanSuggestPitch != true) return;
+        try
+        {
+            var suggestion = VoiceAnalyzer.Suggest(_analysis, ReadTarget());
+            if (suggestion.Limited && MessageBox.Show(this,
+                "Для выбранной цели нужен сдвиг за пределами ±12 st. Подбор будет ограничен этим диапазоном. Продолжить?",
+                "Цель вне диапазона", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            _applying = true;
+            try
+            {
+                PopulateCandidate(new() { PitchEnabled = true, PitchSemitones = suggestion.Semitones,
+                    FormantEnabled = true, FormantSemitones = 1.5 });
+                NeutralReference.IsChecked = true; PitchOnly.IsChecked = true; PreferredBox.SelectedIndex = 1;
+                ReferenceLabel.Text = Describe("A", Reference());
+            }
+            finally { _applying = false; }
+            InvalidateComparison();
+            await BuildExploration();
+        }
+        catch (Exception ex) { Error("Подбор недоступен", ex); }
+    }
+    private async void PrepareExploration(object sender, RoutedEventArgs e) => await BuildExploration();
+    private async Task BuildExploration()
+    {
+        if (_busy || _raw is null || ExcerptBox.SelectedItem is not CalibrationSection excerpt) return;
+        StopPreview(); _comparison = null; ClearExploration();
+        var raw = _raw; var reference = Reference(); var center = Candidate().Validated(); var carrier = _carrier;
+        bool match = MatchLevels.IsChecked == true;
+        SetBusy(true, "Готовим сочетания высоты и тембра. PANIC отменяет расчёт…"); var ct = BeginWork();
+        var progress = new Progress<int>(percent =>
+        {
+            if (!_closed && _work?.Token == ct && !ct.IsCancellationRequested && _busy) LabStatus.Text = $"Сочетания высоты и тембра: {percent}% · PANIC — отмена";
+        });
+        try
+        {
+            var result = await Task.Run(() => CalibrationExplorer.Render(raw, reference, center, carrier, excerpt, match, ct, progress), ct);
+            if (_closed || ct.IsCancellationRequested) return;
+            _exploration = result; _comparison = result.Audio;
+            _applying = true;
+            try { ExplorationBox.ItemsSource = result.Choices; ExplorationBox.SelectedIndex = 0; }
+            finally { _applying = false; }
+            SelectExploration();
+            BButton.BringIntoView();
+            LabStatus.Text = "Варианты готовы. Слушай B и выбирай сочетания из списка — на той же позиции.";
+        }
+        catch (OperationCanceledException) { if (!_closed) LabStatus.Text = "Перебор отменён."; }
+        catch (Exception ex) { Error("Не удалось подготовить варианты", ex); }
+        finally { if (!_closed) SetBusy(false); }
+    }
+    private void ExplorationChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_ready && !_applying) SelectExploration();
+    }
+    private void SelectExploration()
+    {
+        if (_exploration is null || ExplorationBox.SelectedIndex < 0) return;
+        int index = ExplorationBox.SelectedIndex;
+        var choice = _exploration.Choices[index];
+        PopulateCandidate(choice.Effects, resetIsolation: false);
+        PreferredBox.SelectedIndex = 1;
+        PreviewInfo.Text = $"B: {choice} · громкость предпрослушивания ×{choice.PreviewGain:F2}. " +
+            "Ручное изменение слайдера сбрасывает набор; можно подготовить новый вокруг понравившегося B. Сохраняется выбранный вариант, не весь набор.";
+        if (_player is not null)
+        {
+            _player.Playback.Select(2 + index);
+            LabStatus.Text = $"Слушаем B: {choice}. Только наушники.";
+        }
+    }
     private void PlayDry(object sender, RoutedEventArgs e) => Play(0);
     private void PlayA(object sender, RoutedEventArgs e) => Play(1);
-    private void PlayB(object sender, RoutedEventArgs e) => Play(2);
+    private void PlayB(object sender, RoutedEventArgs e) => Play(_exploration is null ? 2 : 2 + Math.Max(0, ExplorationBox.SelectedIndex));
     private void Play(int variant)
     {
         if (_busy || _capture is not null || _comparison is null) return;
@@ -354,6 +436,7 @@ public partial class CalibrationWindow : Window
         if (!s.Enabled) return label + ": общий bypass";
         var effects = new List<string>();
         if (s.PitchEnabled) effects.Add($"питч {s.PitchSemitones:+0.0;-0.0;0.0} st");
+        if (s.FormantEnabled) effects.Add($"тембр {s.FormantSemitones:+0.0;-0.0;0.0} st (раздельно)");
         if (s.WobbleEnabled) effects.Add("воббл"); if (s.RobotEnabled) effects.Add("робот");
         if (s.VocoderEnabled) effects.Add("вокодер"); if (s.EchoEnabled) effects.Add("эхо"); if (s.ReverbEnabled) effects.Add("реверберация");
         return label + ": " + (effects.Count == 0 ? "без эффектов" : string.Join(", ", effects));

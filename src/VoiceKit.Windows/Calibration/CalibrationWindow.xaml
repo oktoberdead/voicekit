@@ -1,12 +1,12 @@
-<Window x:Class="VoiceKit.Windows.Calibration.CalibrationWindow"
+<Window Background="#111820" Foreground="#F1F5F9" FontFamily="Segoe UI" FontSize="14" x:Class="VoiceKit.Windows.Calibration.CalibrationWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="VoiceKit · лаборатория голоса (эксперимент)" Width="1030" Height="880" MinWidth="790" MinHeight="650"
  WindowStartupLocation="CenterOwner" Closing="WindowClosing">
  <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel Margin="0,0,0,18">
    <TextBlock Text="ЛАБОРАТОРИЯ ГОЛОСА" FontSize="26" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
-   <TextBlock Text="Эксперимент · записываем до эффектов VoiceKit, сравниваем на одном образце. Форманты и автотюн пока не реализованы." Foreground="#9EAFBE"/>
-   <TextBlock Text="Основной аудиодвижок остановлен. Запись только по кнопке; прослушивание — только в наушники, не в VB-CABLE. Основные хоткеи приостановлены, кроме PANIC. После закрытия запусти аудио вручную." Foreground="#FFD38A"/>
+   <TextBlock Text="Эксперимент · записываем до эффектов VoiceKit, сравниваем на одном образце. Раздельные высота и формантная окраска β. Не автотюн и не «идеальный голос» по кнопке." Foreground="#CDD9E5"/>
+   <TextBlock Text="Основной аудиодвижок остановлен. Запись только по кнопке; прослушивание — только в наушники, не в VB-CABLE. Основные хоткеи приостановлены, кроме PANIC. После закрытия запусти аудио вручную." Foreground="#FFE0A6"/>
    <TextBlock x:Name="DeviceLabel"/>
   </StackPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel>
@@ -20,21 +20,30 @@
    </StackPanel></GroupBox>
    <GroupBox Header="2 / Измерения и стартовая рекомендация"><StackPanel>
     <TextBlock x:Name="AnalysisLabel" Text="Запиши или открой образец. Анализ выполняется локально, вне аудиопотока." FontFamily="Consolas"/>
-    <TextBlock x:Name="AnalysisWarnings" Foreground="#FFD38A"/>
+    <TextBlock x:Name="AnalysisWarnings" Foreground="#FFE0A6"/>
     <WrapPanel VerticalAlignment="Center"><TextBlock Text="Желаемая медиана высоты, Гц (80–350):" VerticalAlignment="Center" Margin="0,0,10,0"/><TextBox x:Name="TargetHz" Width="95" Text="180"/><Button x:Name="SuggestButton" Content="Предложить питч для B" Click="SuggestPitch" IsEnabled="False"/></WrapPanel>
-    <TextBlock Text="Это ориентир постоянного сдвига от медианы чистого голоса — не выравнивание интонации и не «процент женственности». Вокодер/воббл меняют результат. Периодичность — свойство сигнала, не гарантия точности измерения." Foreground="#9EAFBE"/>
+    <Button x:Name="AutoExploreButton" Content="Подбор по образцу: высота + тембр" Click="StartGuidedExploration" IsEnabled="False" HorizontalAlignment="Left"/>
+    <TextBlock Text="Эта кнопка берёт высоту из измеренной медианы и твоей цели. A станет нейтральным; B — только высота и тембр. Стартовые варианты тембра: 0 / +1.5 / +3 st — это пробы на слух, не измеренные рекомендации. После подготовки нажми B и выбирай варианты в разделе 3." Foreground="#CDD9E5"/>
+    <TextBlock Text="Это ориентир постоянного сдвига от медианы чистого голоса — не выравнивание интонации и не «процент женственности». Вокодер/воббл меняют результат. Периодичность — свойство сигнала, не гарантия точности измерения." Foreground="#CDD9E5"/>
    </StackPanel></GroupBox>
    <GroupBox Header="3 / A/B на одной записи"><StackPanel>
     <CheckBox x:Name="NeutralReference" Content="A: нейтральный, без эффектов (сними флажок, чтобы вернуть снимок эффектов)" Checked="CandidateChanged" Unchecked="CandidateChanged"/>
     <TextBlock x:Name="ReferenceLabel" Text="A: снимок настроек на момент открытия лаборатории"/>
     <TextBlock Text="B: кандидат. Исходно — те же эффекты, что были при открытии окна."/>
-    <WrapPanel><CheckBox x:Name="CandidateEnabled" Content="Обработка B включена" Checked="CandidateChanged" Unchecked="CandidateChanged"/><CheckBox x:Name="CandidatePitch" Content="Питч B включён" Checked="CandidateChanged" Unchecked="CandidateChanged"/><CheckBox x:Name="PitchOnly" Content="В B оставить только питч" Checked="CandidateChanged" Unchecked="CandidateChanged"/></WrapPanel>
+    <WrapPanel><CheckBox x:Name="CandidateEnabled" Content="Обработка B включена" Checked="CandidateChanged" Unchecked="CandidateChanged"/><CheckBox x:Name="CandidatePitch" Content="Питч B включён" Checked="CandidateChanged" Unchecked="CandidateChanged"/><CheckBox x:Name="PitchOnly" Content="В B только высота + тембр" Checked="CandidateChanged" Unchecked="CandidateChanged"/></WrapPanel>
     <DockPanel><TextBlock Text="Сдвиг B, полутоны"/><TextBlock HorizontalAlignment="Right" Text="{Binding ElementName=CandidateShift, Path=Value, StringFormat=F1}"/></DockPanel>
     <Slider x:Name="CandidateShift" Minimum="-12" Maximum="12" TickFrequency="0.1" ValueChanged="CandidateSliderChanged"/>
+    <CheckBox x:Name="CandidateFormant" Content="B: разделить высоту и формантную окраску" Checked="CandidateChanged" Unchecked="CandidateChanged"/>
+    <DockPanel><TextBlock Text="Тембр B: сдвиг огибающей, полутоны"/><TextBlock HorizontalAlignment="Right" Text="{Binding ElementName=CandidateFormantShift, Path=Value, StringFormat=F1}"/></DockPanel>
+    <Slider x:Name="CandidateFormantShift" Minimum="-6" Maximum="6" TickFrequency="0.1" ValueChanged="CandidateSliderChanged"/>
+    <TextBlock Foreground="#CDD9E5" Text="При включённой опции: 0 ≈ сохранить исходную окраску при новом питче; плюс — выше резонансы, минус — ниже. Это адаптивное изменение спектральной огибающей твоего сигнала. Возможны артефакты; точные F1/F2 не оцениваются."/>
     <TextBlock Text="Фрагмент для сравнения"/><ComboBox x:Name="ExcerptBox" SelectionChanged="ExcerptChanged"/>
     <CheckBox x:Name="MatchLevels" Content="Приблизительно выровнять RMS для прослушивания (до −20 dBFS, усиление не больше ×4)" IsChecked="True" Checked="CandidateChanged" Unchecked="CandidateChanged"/>
     <Button x:Name="RenderButton" Content="Подготовить A/B" Click="PrepareComparison" IsEnabled="False" HorizontalAlignment="Left"/>
-    <TextBlock x:Name="PreviewInfo" Text="При изменении параметров нужно заново подготовить сравнение. Рендер сравнивает только эффекты: без саундпада, mute и уровней основного микшера. Живые настройки не меняются." Foreground="#9EAFBE"/>
+    <Button x:Name="ExploreButton" Content="Подготовить до 9 сочетаний вокруг B" Click="PrepareExploration" IsEnabled="False" HorizontalAlignment="Left"/>
+    <TextBlock Foreground="#CDD9E5" Text="Перебор: питч B и ±1 st × тембр B и ±1.5 st. Разделение включается во всех вариантах. Сначала задай питч вручную или по рекомендации; для повышения резонансов можно поставить центр тембра +1.5. Победителя выбираешь ты, оценки «женственности» нет. На границах диапазона вариантов меньше."/>
+    <ComboBox x:Name="ExplorationBox" SelectionChanged="ExplorationChanged" IsEnabled="False" ToolTip="Выбор меняет B. Во время прослушивания сохраняется позиция, звук плавно переключается."/>
+    <TextBlock x:Name="PreviewInfo" Text="При изменении параметров нужно заново подготовить сравнение. Рендер сравнивает только эффекты: без саундпада, mute и уровней основного микшера. Живые настройки не меняются." Foreground="#CDD9E5"/>
     <WrapPanel><Button x:Name="DryButton" Content="Оригинал" Click="PlayDry" IsEnabled="False"/><Button x:Name="AButton" Content="▶ Вариант A" Click="PlayA" IsEnabled="False"/><Button x:Name="BButton" Content="▶ Вариант B" Click="PlayB" IsEnabled="False"/><Button Content="■ Стоп" Click="StopPreviewClick"/><Button Content="PANIC" Background="#FF9B9B" Click="PanicClick"/></WrapPanel>
     <ProgressBar x:Name="PlaybackProgress" Minimum="0" Maximum="1" Height="6"/>
     <TextBlock x:Name="PlaybackLabel" Text="Переключение A/B идёт с той же позиции, с коротким кроссфейдом. Стоп → воспроизведение начинает фрагмент заново."/>
@@ -45,7 +54,7 @@
     <TextBlock Text="Название профиля / пресета"/><TextBox x:Name="ProfileName" Text="Мой голос" MaxLength="80"/>
     <WrapPanel><TextBlock Text="Выбранный результат:" VerticalAlignment="Center" Margin="0,0,12,0"/><ComboBox x:Name="PreferredBox" Width="170" SelectedIndex="1"><ComboBoxItem Content="Вариант A"/><ComboBoxItem Content="Вариант B"/></ComboBox></WrapPanel>
     <WrapPanel><Button x:Name="SaveButton" Content="Сохранить профиль + WAV…" Click="SaveProfile" IsEnabled="False"/><Button x:Name="ApplyButton" Content="Применить выбранный и закрыть" Click="ApplyResult" IsEnabled="False"/></WrapPanel>
-    <TextBlock Text="Профиль сохраняется только по этой кнопке: исходный WAV, анализ и настройки A/B — в локальной папке Calibration. Он содержит твой голос; не публикуй папку без необходимости. Можно удалить папку профиля вручную. «Применить» создаёт обычный пресет эффектов и не сохраняет запись автоматически." Foreground="#9EAFBE"/>
+    <TextBlock Text="Профиль сохраняется только по этой кнопке: исходный WAV, анализ и настройки A/B — в локальной папке Calibration. Он содержит твой голос; не публикуй папку без необходимости. Можно удалить папку профиля вручную. «Применить» создаёт обычный пресет эффектов и не сохраняет запись автоматически." Foreground="#CDD9E5"/>
     <TextBlock x:Name="SavedPathLabel"/>
    </StackPanel></GroupBox>
   </StackPanel></ScrollViewer>
